@@ -8,6 +8,7 @@
 
 import UIKit
 import CoreData
+import Foundation
 
 class ViewController: UIViewController {
     
@@ -15,26 +16,66 @@ class ViewController: UIViewController {
     
     var persistentStoreCoordinator: NSPersistentStoreCoordinator = NSPersistentStoreCoordinator()
     
+    var appDocument = URL(string: "")
+    
     override func viewDidLoad() {
         super.viewDidLoad()
-        
-        let appDelegate:AppDelegate = UIApplication.shared.delegate as! AppDelegate
-        context = appDelegate.persistentContainer.viewContext
         
         let url = Bundle.main.url(forResource: "ios_coredata_nspersistentstorecoordinator_demo", withExtension: "momd")
         
         let demoModel = NSManagedObjectModel(contentsOf: url!)!
-        do{
-            persistentStoreCoordinator = NSPersistentStoreCoordinator.init(managedObjectModel: demoModel)
-            try persistentStoreCoordinator.addPersistentStore(ofType: NSInMemoryStoreType, configurationName: nil, at: nil, options: nil)
-        }catch let error as NSError {
-            fatalError("\(error)")
-        }
- 
+        persistentStoreCoordinator = NSPersistentStoreCoordinator(managedObjectModel: demoModel)
+        
+        context = NSManagedObjectContext(concurrencyType: .mainQueueConcurrencyType)
+        context.persistentStoreCoordinator = persistentStoreCoordinator
+
+        let fileManager = FileManager.default
+        appDocument = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first
+
+        addPersistentStore()
+        let persistentStore = getNSPersistentStoreForURL()
+        removeNSPersistentStore(persistentStore: persistentStore)
+
     }
 
+    
+    // 永続ストアを追加する
+    private func addPersistentStore(){
+        
+        let storeURL = appDocument?.appendingPathComponent("test.sqlite")
+        
+        do{
+          try persistentStoreCoordinator.addPersistentStore(ofType: NSSQLiteStoreType, configurationName: nil, at: storeURL, options: nil)
 
+        }catch let error as NSError{
+            fatalError("\(error)")
+        }
+        
+    }
 
+    // 追加されている永続ストアを全て取得する
+    private func getNSPersistentStore() -> NSPersistentStore {
+        return persistentStoreCoordinator.persistentStores.first!
+    }
 
+    // 追加されている永続ストアをURLから取得する
+    private func getNSPersistentStoreForURL() -> NSPersistentStore {
+        let storeURL = appDocument?.appendingPathComponent("test.sqlite")
+        
+        return persistentStoreCoordinator.persistentStore(for: storeURL!)!
+    }
+    
+    // 永続ストアを除去する
+    private func removeNSPersistentStore(persistentStore: NSPersistentStore){
+        do{
+            try persistentStoreCoordinator.remove(persistentStore)
+            print(persistentStoreCoordinator.persistentStores.count)
+            
+        }catch let error as NSError{
+            fatalError("\(error)")
+        }
+        
+    }
+    
 }
 
